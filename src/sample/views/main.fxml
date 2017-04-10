@@ -13,6 +13,7 @@
             <columns>
                 <!-- Колонки таблицы -->
                 <TableColumn fx:id="nameColumn" prefWidth="80.0" text="Name" />
+                <TableColumn fx:id="isDirColumn" prefWidth="127.0" text="isDir" />
                 <TableColumn fx:id="createdDateColumn" prefWidth="254.0" text="Created date" />
                 <TableColumn fx:id="modifiedDateColumn" prefWidth="239.0" text="Modified date" />
                 <TableColumn fx:id="sizeColumn" prefWidth="127.0" text="Size" />

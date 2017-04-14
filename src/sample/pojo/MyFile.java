@@ -23,16 +23,18 @@ public class MyFile {
     private FileTime createdDate;
     private FileTime modifiedDate;
     private Long size;
-    private String isDir;
+    private String fileType;
     private BasicFileAttributes basicFileAttributes;
 
     @SneakyThrows
     public MyFile(File file) {
         this.file = file;
-        name = file.getName();
-        isDir = file.isDirectory() == false ? "F" : "D";
-        path = file.toPath();
         basicFileAttributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+        name = file.getName();
+        fileType = basicFileAttributes.isDirectory() ? "DIR" :
+                (basicFileAttributes.isRegularFile() ? "FILE" :
+                        (basicFileAttributes.isSymbolicLink() ? "~" : ""));
+        path = file.toPath();
         createdDate = basicFileAttributes.creationTime();
         modifiedDate = basicFileAttributes.lastModifiedTime();
         size = basicFileAttributes.size();

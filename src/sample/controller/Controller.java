@@ -10,12 +10,11 @@ import sample.pojo.MyFile;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 
 import static java.io.File.separator;
 import static java.util.Optional.*;
@@ -72,11 +71,11 @@ public class Controller {
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     MyFile selectedRecord = tableUsers.getItems().get(row.getIndex());
-                    if (selectedRecord.getBasicFileAttributes().isDirectory()) {
-                        initData(new File(selectedRecord.getPath().toString()));
-                    } else {
+                    if (!selectedRecord.getBasicFileAttributes().isDirectory()) {
                         return;
                         //TODO find method to open any file
+                    } else {
+                        initData(new File(selectedRecord.getPath().toString()));
                     }
                 }
             });
@@ -114,22 +113,36 @@ public class Controller {
             else
                 alert.setContentText("Are you sure delete files?");
             Optional<ButtonType> result = alert.showAndWait();
-
+            ExecutorService es1 = Executors.newFixedThreadPool(mf.size());
+            List<Future<MyFile>> list = new ArrayList<>();
             if (result.get() == ButtonType.OK) {
-                final ExecutorService es = Executors.newFixedThreadPool(2);
-                mf.stream().forEach(file -> {
-                    es.execute(() -> {
-                        recursiveDelete(file.getFile());
-                    });
+                mf.forEach(file -> {
+                            Callable<MyFile> callable = () -> {
+                                recursiveDelete(file.getFile());
+                                return file;
+                            };
+                            list.add(es1.submit(callable));
+                        }
+                );
+                list.stream().parallel().forEach(future -> {
+                    try {
+                        MyFile mff = future.get();
+                        synchronized (this) {
+                            filesData.remove(mff);
+                        }
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
                 });
-                filesData.removeAll(mf);
+                es1.shutdown();
             } else {
-                return;
             }
         });
 
 
-        btnCopy.setOnAction(action -> {
+        btnCopy.setOnAction(action ->
+
+        {
             ObservableList<MyFile> fileList = tableUsers.getSelectionModel().getSelectedItems();
             TextInputDialog dialog = new TextInputDialog(currentDir.getPath());
             dialog.setTitle("New directory");
@@ -164,6 +177,7 @@ public class Controller {
             }
         }
         file.delete();
+
 
     }
 

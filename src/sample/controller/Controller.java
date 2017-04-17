@@ -5,30 +5,40 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import lombok.extern.java.Log;
 import sample.pojo.MyFile;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static java.io.File.separator;
-import static java.util.Optional.*;
+import static java.util.Optional.ofNullable;
 
 /**
  * Created by Stepan.Koledov on 10.04.2017.
  */
+@Log
 public class Controller {
 
+
     private ObservableList<MyFile> filesData = FXCollections.observableArrayList();
-    private File currentDir;
+    private volatile File currentDir;
+    private final Object sync = new Object();
 
     @FXML
-    private TableView<MyFile> tableUsers;
+    private TableView<MyFile> tableFileManager;
 
     @FXML
     private Label directoryLabel;
@@ -60,17 +70,61 @@ public class Controller {
     @FXML
     private TableColumn<MyFile, Long> sizeColumn;
 
-    private static final int BUFFER_SIZE = 1024;
-
     // инициализируем форму данными
     @FXML
     private void initialize() {
-        tableUsers.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        tableUsers.setRowFactory(tv -> {
+        startDaemon();
+        tableInit();
+        cmbBoxInit();
+        buttonsInit();
+    }
+
+
+    private void startDaemon() {
+        Thread th = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                synchronized (sync) {
+                    if (currentDir != null) {
+
+                        List<MyFile> fl = Arrays.stream(currentDir.listFiles())
+                                .map(MyFile::new)
+                                .collect(Collectors.toList());
+
+                        fl.removeAll(filesData);
+
+                        fl.stream()
+                                .peek(f -> log.info("ADDED:" + f.getName()))
+                                .forEach(f -> filesData.add(f));
+
+                        filesData.stream()
+                                .filter(f -> (!f.getName().equals("..")) && (!f.getFile().exists()))
+                                .collect(Collectors.toList())
+                                .stream()
+                                .peek(f -> log.info("DELETED:" + f.getName()))
+                                .forEach(f -> filesData.remove(f));
+
+                        tableFileManager.sort();
+                    }
+                }
+            }
+        });
+        th.setDaemon(true);
+        th.start();
+    }
+
+
+    private void tableInit() {
+        tableFileManager.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        tableFileManager.setRowFactory(tv -> {
             TableRow<MyFile> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                    MyFile selectedRecord = tableUsers.getItems().get(row.getIndex());
+                    MyFile selectedRecord = tableFileManager.getItems().get(row.getIndex());
                     if (!selectedRecord.getBasicFileAttributes().isDirectory()) {
                         return;
                         //TODO find method to open any file
@@ -82,75 +136,89 @@ public class Controller {
             return row;
         });
 
-        nameColumn.setCellValueFactory(new PropertyValueFactory<MyFile, String>("name"));
-        fileTypeColumn.setCellValueFactory(new PropertyValueFactory<MyFile, String>("fileType"));
-        createdDateColumn.setCellValueFactory(new PropertyValueFactory<MyFile, FileTime>("createdDate"));
-        modifiedDateColumn.setCellValueFactory(new PropertyValueFactory<MyFile, FileTime>("modifiedDate"));
-        sizeColumn.setCellValueFactory(new PropertyValueFactory<MyFile, Long>("size"));
-        tableUsers.setItems(filesData);
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        fileTypeColumn.setCellValueFactory(new PropertyValueFactory<>("fileType"));
+        createdDateColumn.setCellValueFactory(new PropertyValueFactory<>("createdDate"));
+        modifiedDateColumn.setCellValueFactory(new PropertyValueFactory<>("modifiedDate"));
+        sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
+        tableFileManager.setItems(filesData);
+    }
 
+    private void cmbBoxInit() {
         rootDisks.getItems().addAll(File.listRoots());
-        rootDisks.getSelectionModel().selectedItemProperty().addListener((file, oldVal, newVal) -> initData(newVal));
+        rootDisks.getSelectionModel().
+                selectedItemProperty().
+                addListener((file, oldVal, newVal) -> initData(newVal));
+    }
 
-        btnAddNewDir.setOnAction(action -> {
+    private void buttonsInit() {
+        btnAddNewDir.setOnAction(action ->
+        {
             TextInputDialog dialog = new TextInputDialog("walter");
             dialog.setTitle("New directory");
             dialog.setHeaderText("");
             dialog.setContentText("Please enter new directory:");
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent())
-                ofNullable(createDirectory(String.format("%s%s%s", currentDir, separator, result.get())))
-                        .ifPresent(f -> filesData.add(f));
+                ofNullable(createDirectory(String.format("%s%s%s", currentDir, separator, result.get())));
         });
 
-        btnDel.setOnAction(action -> {
-            ObservableList<MyFile> mf = tableUsers.getSelectionModel().getSelectedItems();
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Confirmation Dialog");
-            alert.setHeaderText("");
-            if (mf.size() > 1)
-                alert.setContentText("Are you sure delete file: " + mf.get(0).getName() + "?");
-            else
-                alert.setContentText("Are you sure delete files?");
-            Optional<ButtonType> result = alert.showAndWait();
-            ExecutorService es1 = Executors.newFixedThreadPool(mf.size());
-            List<Future<MyFile>> list = new ArrayList<>();
-            if (result.get() == ButtonType.OK) {
-                mf.forEach(file -> {
-                            Callable<MyFile> callable = () -> {
-                                recursiveDelete(file.getFile());
-                                return file;
-                            };
-                            list.add(es1.submit(callable));
-                        }
-                );
-                list.stream().parallel().forEach(future -> {
-                    try {
-                        MyFile mff = future.get();
-                        synchronized (this) {
-                            filesData.remove(mff);
-                        }
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
+        btnDel.setOnAction(action ->
+        {
+            synchronized (sync) {
+                ObservableList<MyFile> filesList = tableFileManager.getSelectionModel().getSelectedItems();
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Confirmation Dialog");
+                alert.setHeaderText("");
+                if (filesList.size() > 1)
+                    alert.setContentText("Are you sure delete file: " + filesList.get(0).getName() + "?");
+                else
+                    alert.setContentText("Are you sure delete files?");
+                alert.showAndWait().ifPresent(res -> {
+                    if (res == ButtonType.OK) asyncDelete(filesList);
                 });
-                es1.shutdown();
-            } else {
             }
         });
 
 
         btnCopy.setOnAction(action ->
-
         {
-            ObservableList<MyFile> fileList = tableUsers.getSelectionModel().getSelectedItems();
+            ObservableList<MyFile> fileList = tableFileManager.getSelectionModel().getSelectedItems();
             TextInputDialog dialog = new TextInputDialog(currentDir.getPath());
             dialog.setTitle("New directory");
             dialog.setHeaderText("");
             dialog.setContentText("Copy file to directory:");
-            dialog.showAndWait().ifPresent(inputDirectory ->
-                    fileList.forEach(file -> copy(file.getFile(), new File(inputDirectory + separator + file.getName()))));
+            dialog.showAndWait()
+                    .ifPresent(inputDirectory -> asyncCopy(fileList, inputDirectory));
         });
+    }
+
+    private void asyncDelete(ObservableList<MyFile> filesList) {
+        ExecutorService es1 = Executors.newFixedThreadPool(filesList.size());
+        List<Future<MyFile>> list = new ArrayList<>();
+        filesList.forEach(file -> {
+                    Callable<MyFile> callable = () -> {
+                        recursiveDelete(file.getFile());
+                        return file;
+                    };
+                    list.add(es1.submit(callable));
+                }
+        );
+        es1.shutdown();
+    }
+
+    private void asyncCopy(ObservableList<MyFile> fileList, String inputDirectory) {
+        ExecutorService es1 = Executors.newFixedThreadPool(fileList.size());
+        List<Future<MyFile>> list = new ArrayList<>();
+        fileList.forEach(file -> {
+                    Callable<MyFile> callable = () -> {
+                        copy(file.getFile(), new File(inputDirectory + separator + file.getName()));
+                        return file;
+                    };
+                    list.add(es1.submit(callable));
+                }
+        );
+        es1.shutdown();
     }
 
     private MyFile createDirectory(String dir) {
@@ -224,7 +292,6 @@ public class Controller {
         return false;
     }
 
-
     private boolean copyWithReplacement(File srcFile, File dstFile) {
         Optional<ButtonType> buttonType = showConfirmationWindowToReplace();
         if (buttonType.isPresent() && buttonType.get() == ButtonType.OK) {
@@ -238,21 +305,21 @@ public class Controller {
         return false;
     }
 
-
-    public void initData(File file) {
-        currentDir = file;
-        directoryLabel.setText(currentDir.toPath().toString());
-        filesData.clear();
-        if (file.getParentFile() != null) {
-            MyFile dir = new MyFile(file.getParentFile());
-            dir.setName("..");
-            filesData.add(dir);
+    private void initData(File file) {
+        synchronized (sync) {
+            currentDir = file;
+            directoryLabel.setText(currentDir.toPath().toString());
+            filesData.clear();
+            if (file.getParentFile() != null) {
+                MyFile dir = new MyFile(file.getParentFile());
+                dir.setName("..");
+                filesData.add(dir);
+            }
+            File[] fl = file.listFiles();
+            if (fl != null)
+                Arrays.stream(fl).map(MyFile::new).forEach(f -> filesData.add(f));
         }
-        File[] fl = file.listFiles();
-        if (fl != null)
-            Arrays.stream(fl).map(MyFile::new).forEach(f -> filesData.add(f));
     }
-
 
 }
 

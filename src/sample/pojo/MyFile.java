@@ -40,5 +40,19 @@ public class MyFile {
         size = basicFileAttributes.size();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
+        MyFile myFile = (MyFile) o;
+
+        return path != null ? path.equals(myFile.path) : myFile.path == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return path != null ? path.hashCode() : 0;
+    }
 }

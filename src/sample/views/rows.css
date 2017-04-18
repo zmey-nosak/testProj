@@ -1,0 +1,8 @@
+/*
+Pseudo class 'up' will change the row background
+ color to green when activated
+ */
+.table-row-cell:up
+{
+    -fx-background-color: #007054;
+}

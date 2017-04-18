@@ -2,29 +2,24 @@ package sample.controller;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import lombok.extern.java.Log;
 import sample.pojo.MyFile;
+import sample.utils.Find;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static java.io.File.separator;
@@ -40,8 +35,7 @@ public class Controller {
     private ObservableList<MyFile> filesData = FXCollections.observableArrayList();
     private volatile File currentDir;
     private final Object sync = new Object();
-    private static final DataFormat SERIALIZED_MIME_TYPE = new DataFormat("application/x-java-serialized-object");
-    private DataFormat listDataFormat = new DataFormat("tableFileManager");
+    private PseudoClass up = PseudoClass.getPseudoClass("up");
 
     @FXML
     private TableView<MyFile> tableFileManager;
@@ -62,6 +56,13 @@ public class Controller {
     private Button btnCopy;
 
     @FXML
+    private Button btnSearch;
+
+    @FXML
+    private TextField txtSearchField;
+
+
+    @FXML
     private TableColumn<MyFile, String> nameColumn;
 
     @FXML
@@ -76,7 +77,6 @@ public class Controller {
     @FXML
     private TableColumn<MyFile, Long> sizeColumn;
 
-
     // инициализируем форму данными
     @FXML
     private void initialize() {
@@ -85,7 +85,6 @@ public class Controller {
         cmbBoxInit();
         buttonsInit();
     }
-
 
     private void startDaemon() {
         Thread th = new Thread(() -> {
@@ -105,14 +104,14 @@ public class Controller {
                         fl.removeAll(filesData);
 
                         fl.stream()
-                                .peek(f -> log.info("ADDED:" + f.getName()))
+                                .peek(f -> log.info("ADDED TO LIST:" + f.getName()))
                                 .forEach(f -> filesData.add(f));
 
                         filesData.stream()
                                 .filter(f -> (!f.getName().equals("..")) && (!f.getFile().exists()))
                                 .collect(Collectors.toList())
                                 .stream()
-                                .peek(f -> log.info("DELETED:" + f.getName()))
+                                .peek(f -> log.info("DELETED FROM LIST:" + f.getName()))
                                 .forEach(f -> filesData.remove(f));
 
                         tableFileManager.sort();
@@ -124,11 +123,11 @@ public class Controller {
         th.start();
     }
 
-
     private void tableInit() {
         tableFileManager.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         tableFileManager.setRowFactory(tv -> {
             TableRow<MyFile> row = new TableRow<>();
+
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     MyFile selectedRecord = tableFileManager.getItems().get(row.getIndex());
@@ -141,51 +140,40 @@ public class Controller {
                 }
             });
 
-          /*  row.setOnDragDetected(event -> {
-                if (!row.isEmpty()) {
-                    Integer index = row.getIndex();
-                    Dragboard db = row.startDragAndDrop(TransferMode.MOVE);
-                    db.setDragView(row.snapshot(null, null));
-                    ClipboardContent cc = new ClipboardContent();
-                    cc.put(SERIALIZED_MIME_TYPE, index);
-                    db.setContent(cc);
-                    event.consume();
-                }
+            row.setOnDragExited(event -> {
+                log.info("dragOverExited:" + row.getItem().getName());
+                row.pseudoClassStateChanged(up, false);
+                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                event.consume();
             });
 
             row.setOnDragOver(event -> {
                 Dragboard db = event.getDragboard();
-                if (db.hasContent(SERIALIZED_MIME_TYPE)) {
-                    if (row.getIndex() != ((Integer)db.getContent(SERIALIZED_MIME_TYPE)).intValue()) {
-                        event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
-                        event.consume();
-                    }
+                log.info("dragOverDetected:" + row.getItem().getName());
+                if (db.hasFiles()) {
+                    row.pseudoClassStateChanged(up, true);
+                    event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                    event.consume();
                 }
             });
 
             row.setOnDragDropped(event -> {
                 Dragboard db = event.getDragboard();
-                if (db.hasContent(SERIALIZED_MIME_TYPE)) {
-                    int draggedIndex = (Integer) db.getContent(SERIALIZED_MIME_TYPE);
-                    MyFile draggedPerson = tableFileManager.getItems().remove(draggedIndex);
-
-                    int dropIndex ;
-
-                    if (row.isEmpty()) {
-                        dropIndex = tableFileManager.getItems().size() ;
-                    } else {
-                        dropIndex = row.getIndex();
+                if (db.hasFiles()) {
+                    List<File> fileList = db.getFiles();
+                    long cnt = fileList.stream().filter(f -> f.getPath().equals(row.getItem().getFile().getPath())).count();
+                    if (cnt == 0) {
+                        if (event.getAcceptedTransferMode() == TransferMode.MOVE) {
+                            asyncCopy(fileList, row.getItem().getPath().toString(), true);
+                        } else {
+                            asyncCopy(fileList, row.getItem().getPath().toString(), false);
+                        }
                     }
-
-                    tableFileManager.getItems().add(dropIndex, draggedPerson);
-
                     event.setDropCompleted(true);
-                    tableFileManager.getSelectionModel().select(dropIndex);
+                    tableFileManager.getSelectionModel().select(row.getIndex());
                     event.consume();
                 }
             });
-*/
-
             return row;
         });
 
@@ -198,11 +186,14 @@ public class Controller {
 
         tableFileManager.setOnDragDetected(mouseEvent -> {
                     log.info("setOnDragDetected");
-                    Dragboard dragBoard = tableFileManager.startDragAndDrop(TransferMode.MOVE);
+                    Dragboard dragBoard = tableFileManager.startDragAndDrop(TransferMode.COPY_OR_MOVE);
                     ClipboardContent content = new ClipboardContent();
-            content.putString("hhhh");
-                    //content.putString(tableFileManager.getSelectionModel().getSelectedItem().getName());
-                  //  content.put(listDataFormat, new ArrayList<>(tableFileManager.getSelectionModel().getSelectedItems()));
+                    content.putFiles(tableFileManager
+                            .getSelectionModel()
+                            .getSelectedItems()
+                            .stream()
+                            .map(MyFile::getFile)
+                            .collect(Collectors.toList()));
                     dragBoard.setContent(content);
                 }
         );
@@ -231,7 +222,7 @@ public class Controller {
         btnDel.setOnAction(action ->
         {
             synchronized (sync) {
-                ObservableList<MyFile> filesList = tableFileManager.getSelectionModel().getSelectedItems();
+                List<File> filesList = tableFileManager.getSelectionModel().getSelectedItems().stream().map(MyFile::getFile).collect(Collectors.toList());
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                 alert.setTitle("Confirmation Dialog");
                 alert.setHeaderText("");
@@ -245,25 +236,40 @@ public class Controller {
             }
         });
 
-
         btnCopy.setOnAction(action ->
         {
-            ObservableList<MyFile> fileList = tableFileManager.getSelectionModel().getSelectedItems();
+            List<File> fileList = tableFileManager
+                    .getSelectionModel()
+                    .getSelectedItems()
+                    .stream()
+                    .map(MyFile::getFile)
+                    .collect(Collectors.toList());
             TextInputDialog dialog = new TextInputDialog(currentDir.getPath());
             dialog.setTitle("New directory");
             dialog.setHeaderText("");
             dialog.setContentText("Copy file to directory:");
             dialog.showAndWait()
-                    .ifPresent(inputDirectory -> asyncCopy(fileList, inputDirectory));
+                    .ifPresent(inputDirectory -> asyncCopy(fileList, inputDirectory, false));
+        });
+
+        btnSearch.setOnAction(action -> {
+            Find.Finder finder = new Find.Finder(txtSearchField.getText());
+            try {
+                Files.walkFileTree(currentDir.toPath(), finder);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            tableFileManager.setItems(finder.done());
+
         });
     }
 
-    private void asyncDelete(ObservableList<MyFile> filesList) {
+    private void asyncDelete(List<File> filesList) {
         ExecutorService es1 = Executors.newFixedThreadPool(filesList.size());
-        List<Future<MyFile>> list = new ArrayList<>();
+        List<Future<File>> list = new ArrayList<>();
         filesList.forEach(file -> {
-                    Callable<MyFile> callable = () -> {
-                        recursiveDelete(file.getFile());
+                    Callable<File> callable = () -> {
+                        recursiveDelete(file);
                         return file;
                     };
                     list.add(es1.submit(callable));
@@ -272,15 +278,24 @@ public class Controller {
         es1.shutdown();
     }
 
-    private void asyncCopy(ObservableList<MyFile> fileList, String inputDirectory) {
+    private void asyncCopy(List<File> fileList, String inputDirectory, boolean flagDelete) {
         ExecutorService es1 = Executors.newFixedThreadPool(fileList.size());
-        List<Future<MyFile>> list = new ArrayList<>();
+        List<Future<File>> list = new ArrayList<>();
         fileList.forEach(file -> {
-                    Callable<MyFile> callable = () -> {
-                        copy(file.getFile(), new File(inputDirectory + separator + file.getName()));
+                    Callable<File> callable = () -> {
+                        copy(file, new File(inputDirectory + separator + file.getName()));
                         return file;
                     };
                     list.add(es1.submit(callable));
+                    if (flagDelete) {
+                        list.stream().parallel().forEach(f -> {
+                            try {
+                                recursiveDelete(f.get());
+                            } catch (InterruptedException | ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
                 }
         );
         es1.shutdown();
@@ -294,6 +309,7 @@ public class Controller {
     }
 
     private void copy(File src, File dst) {
+        log.info("copy file " + src.getName() + " to " + dst.getPath());
         if (src.isDirectory())
             copyDir(src, dst);
         else
@@ -301,7 +317,7 @@ public class Controller {
     }
 
     private void recursiveDelete(File file) {
-        System.out.println(file.getName());
+        log.info("deleting file " + file.getName() + " ...");
         if (!file.exists())
             return;
         if (file.isDirectory()) {
@@ -310,8 +326,6 @@ public class Controller {
             }
         }
         file.delete();
-
-
     }
 
     private Optional<ButtonType> showConfirmationWindowToReplace() {

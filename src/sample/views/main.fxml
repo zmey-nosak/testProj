@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import java.lang.*?>
+<?import java.net.*?>
+<?import javafx.collections.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
@@ -11,33 +13,77 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.layout.AnchorPane?>
 
-<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="534.0" prefWidth="946.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="sample.controller.Controller">
+<AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="534.0" prefWidth="1044.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="sample.controller.Controller">
   <children>
-    <SplitPane dividerPositions="0.18796992481203006" focusTraversable="true" orientation="VERTICAL" prefHeight="534.0" prefWidth="946.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+    <SplitPane dividerPositions="0.5" focusTraversable="true" prefHeight="534.0" prefWidth="889.9998779296875" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="1.0" AnchorPane.rightAnchor="-1.0" AnchorPane.topAnchor="0.0">
       <items>
-        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="138.9998779296875" prefWidth="829.0">
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="532.0" prefWidth="505.0">
           <children>
-            <ComboBox fx:id="rootDisks" layoutX="17.0" layoutY="24.0" prefWidth="150.0" />
-            <Button fx:id="btnAddNewDir" layoutX="17.0" layoutY="56.0" mnemonicParsing="false" text="Create directory" />
-            <Button fx:id="btnDel" layoutX="144.0" layoutY="56.0" mnemonicParsing="false" text="Delete" />
-            <Button fx:id="btnCopy" layoutX="211.0" layoutY="56.0" mnemonicParsing="false" text="Copy" />
-            <Button layoutX="270.0" layoutY="56.0" mnemonicParsing="false" text="Move" />
-            <Label fx:id="directoryLabel" layoutX="176.0" layoutY="24.0" minHeight="15.0" prefHeight="24.0" prefWidth="498.0" />
+            <SplitPane dividerPositions="0.23018867924528302" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="611.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+              <items>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="128.0" prefWidth="609.0">
+                  <children>
+                    <ComboBox fx:id="rootDisks" layoutX="17.0" layoutY="24.0" prefWidth="150.0" />
+                    <Button fx:id="btnAddNewDir" layoutX="17.0" layoutY="56.0" mnemonicParsing="false" text="Create directory" />
+                    <Button fx:id="btnDel" layoutX="144.0" layoutY="56.0" mnemonicParsing="false" text="Delete" />
+                    <Button fx:id="btnCopy" layoutX="211.0" layoutY="56.0" mnemonicParsing="false" text="Copy" />
+                    <Button layoutX="270.0" layoutY="56.0" mnemonicParsing="false" text="Move" />
+                    <Label fx:id="directoryLabel" layoutX="176.0" layoutY="24.0" minHeight="15.0" prefHeight="24.0" prefWidth="327.0" text="Label" />
+                    <TextField fx:id="txtSearchField" layoutX="17.0" layoutY="86.0" prefWidth="177.0" />
+                    <Button fx:id="btnSearch" layoutX="200.0" layoutY="86.0" mnemonicParsing="false" text="Search" />
+                    <Button cancelButton="false" defaultButton="false" disable="false" focusTraversable="true" layoutX="272.0" layoutY="86.0" mnemonicParsing="false" prefWidth="55.0" text="Back" />
+                  </children>
+                </AnchorPane>
+                <AnchorPane disable="false" minHeight="0.0" minWidth="0.0" prefHeight="329.0" prefWidth="829.0">
+                  <children>
+                    <!-- Таблица в которую мы будем выводит наш pojo -->
+                    <TableView fx:id="tableFileManager" prefHeight="232.0" prefWidth="829.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                      <columns>
+                        <!-- Колонки таблицы -->
+                        <TableColumn maxWidth="5000.0" minWidth="10.0" prefWidth="163.0" text="Name" fx:id="nameColumn" />
+                        <TableColumn maxWidth="5000.0" minWidth="10.0" prefWidth="65.0" text="isDir" fx:id="fileTypeColumn" />
+                        <TableColumn maxWidth="5000.0" minWidth="10.0" prefWidth="111.0" text="Created date" fx:id="createdDateColumn" />
+                        <TableColumn maxWidth="5000.0" minWidth="10.0" prefWidth="108.0" text="Modified date" fx:id="modifiedDateColumn" />
+                        <TableColumn maxWidth="5000.0" minWidth="10.0" prefWidth="62.0" text="Size" fx:id="sizeColumn" />
+                      </columns>
+                      <stylesheets>
+                        <URL value="@rows.css" />
+                      </stylesheets>
+                    </TableView>
+                  </children>
+                </AnchorPane>
+              </items>
+            </SplitPane>
           </children>
         </AnchorPane>
-        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="329.0" prefWidth="829.0">
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
           <children>
-            <!-- Таблица в которую мы будем выводит наш pojo -->
-            <TableView fx:id="tableFileManager" prefHeight="232.0" prefWidth="829.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-              <columns>
-                <!-- Колонки таблицы -->
-                <TableColumn prefWidth="183.0" text="Name" fx:id="nameColumn" />
-                <TableColumn prefWidth="104.0" text="isDir" fx:id="fileTypeColumn" />
-                <TableColumn prefWidth="159.0" text="Created date" fx:id="createdDateColumn" />
-                <TableColumn prefWidth="186.0" text="Modified date" fx:id="modifiedDateColumn" />
-                <TableColumn prefWidth="95.0" text="Size" fx:id="sizeColumn" />
-              </columns>
-            </TableView>
+            <SplitPane dividerPositions="0.2320754716981132" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="465.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+              <items>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
+                  <children>
+                    <ComboBox layoutX="15.0" layoutY="28.0" prefWidth="141.0">
+                      <items>
+                        <FXCollections fx:factory="observableArrayList">
+                          <String fx:value="Item 1" />
+                          <String fx:value="Item 2" />
+                          <String fx:value="Item 3" />
+                        </FXCollections>
+                      </items>
+                    </ComboBox>
+                    <Button id="btnAddNewDir" layoutX="15.0" layoutY="59.0" mnemonicParsing="false" prefWidth="141.0" text="Create directory" />
+                    <Button id="btnDel" layoutX="160.0" layoutY="59.0" mnemonicParsing="false" text="Delete" />
+                    <Button id="btnCopy" layoutX="228.0" layoutY="59.0" mnemonicParsing="false" prefWidth="57.0" text="Copy" />
+                    <Button layoutX="290.0" layoutY="59.0" mnemonicParsing="false" prefWidth="57.0" text="Move" />
+                    <TextField layoutX="15.0" layoutY="89.0" prefWidth="195.0" />
+                    <Button layoutX="220.0" layoutY="89.0" mnemonicParsing="false" text="Search" />
+                    <Button layoutX="290.0" layoutY="89.0" mnemonicParsing="false" prefWidth="57.0" text="Back" />
+                    <Label layoutX="168.0" layoutY="28.0" prefHeight="23.0" prefWidth="336.0" text="Label" />
+                  </children>
+                </AnchorPane>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0" />
+              </items>
+            </SplitPane>
           </children>
         </AnchorPane>
       </items>

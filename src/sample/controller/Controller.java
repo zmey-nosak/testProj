@@ -5,6 +5,10 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import lombok.extern.java.Log;
 import sample.pojo.MyFile;
 
@@ -36,6 +40,8 @@ public class Controller {
     private ObservableList<MyFile> filesData = FXCollections.observableArrayList();
     private volatile File currentDir;
     private final Object sync = new Object();
+    private static final DataFormat SERIALIZED_MIME_TYPE = new DataFormat("application/x-java-serialized-object");
+    private DataFormat listDataFormat = new DataFormat("tableFileManager");
 
     @FXML
     private TableView<MyFile> tableFileManager;
@@ -69,6 +75,7 @@ public class Controller {
 
     @FXML
     private TableColumn<MyFile, Long> sizeColumn;
+
 
     // инициализируем форму данными
     @FXML
@@ -133,6 +140,52 @@ public class Controller {
                     }
                 }
             });
+
+          /*  row.setOnDragDetected(event -> {
+                if (!row.isEmpty()) {
+                    Integer index = row.getIndex();
+                    Dragboard db = row.startDragAndDrop(TransferMode.MOVE);
+                    db.setDragView(row.snapshot(null, null));
+                    ClipboardContent cc = new ClipboardContent();
+                    cc.put(SERIALIZED_MIME_TYPE, index);
+                    db.setContent(cc);
+                    event.consume();
+                }
+            });
+
+            row.setOnDragOver(event -> {
+                Dragboard db = event.getDragboard();
+                if (db.hasContent(SERIALIZED_MIME_TYPE)) {
+                    if (row.getIndex() != ((Integer)db.getContent(SERIALIZED_MIME_TYPE)).intValue()) {
+                        event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                        event.consume();
+                    }
+                }
+            });
+
+            row.setOnDragDropped(event -> {
+                Dragboard db = event.getDragboard();
+                if (db.hasContent(SERIALIZED_MIME_TYPE)) {
+                    int draggedIndex = (Integer) db.getContent(SERIALIZED_MIME_TYPE);
+                    MyFile draggedPerson = tableFileManager.getItems().remove(draggedIndex);
+
+                    int dropIndex ;
+
+                    if (row.isEmpty()) {
+                        dropIndex = tableFileManager.getItems().size() ;
+                    } else {
+                        dropIndex = row.getIndex();
+                    }
+
+                    tableFileManager.getItems().add(dropIndex, draggedPerson);
+
+                    event.setDropCompleted(true);
+                    tableFileManager.getSelectionModel().select(dropIndex);
+                    event.consume();
+                }
+            });
+*/
+
             return row;
         });
 
@@ -142,6 +195,18 @@ public class Controller {
         modifiedDateColumn.setCellValueFactory(new PropertyValueFactory<>("modifiedDate"));
         sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
         tableFileManager.setItems(filesData);
+
+        tableFileManager.setOnDragDetected(mouseEvent -> {
+                    log.info("setOnDragDetected");
+                    Dragboard dragBoard = tableFileManager.startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent content = new ClipboardContent();
+            content.putString("hhhh");
+                    //content.putString(tableFileManager.getSelectionModel().getSelectedItem().getName());
+                  //  content.put(listDataFormat, new ArrayList<>(tableFileManager.getSelectionModel().getSelectedItems()));
+                    dragBoard.setContent(content);
+                }
+        );
+
     }
 
     private void cmbBoxInit() {

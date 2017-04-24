@@ -3,13 +3,13 @@ package sample.pojo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
+import sample.utils.MyTimeFormat;
 
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 
 /**
  * Created by Stepan.Koledov on 10.04.2017.
@@ -20,24 +20,30 @@ public class MyFile {
     private String name;
     private File file;
     private Path path;
-    private FileTime createdDate;
-    private FileTime modifiedDate;
+    private MyTimeFormat createdDate;
+    private MyTimeFormat modifiedDate;
     private Long size;
-    private String fileType;
     private BasicFileAttributes basicFileAttributes;
+    private boolean head;
+
+    private enum FileType {DIR, FILE, SYMLINK}
+
+    private FileType fileType;
 
     @SneakyThrows
     public MyFile(File file) {
         this.file = file;
+
         basicFileAttributes = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
         name = file.getName();
-        fileType = basicFileAttributes.isDirectory() ? "DIR" :
-                (basicFileAttributes.isRegularFile() ? "FILE" :
-                        (basicFileAttributes.isSymbolicLink() ? "~" : ""));
+        fileType = basicFileAttributes.isDirectory() ? FileType.DIR :
+                (basicFileAttributes.isRegularFile() ? FileType.FILE :
+                        (basicFileAttributes.isSymbolicLink() ? FileType.SYMLINK : null));
         path = file.toPath();
-        createdDate = basicFileAttributes.creationTime();
-        modifiedDate = basicFileAttributes.lastModifiedTime();
-        size = basicFileAttributes.size();
+
+        createdDate = new MyTimeFormat(basicFileAttributes.creationTime());
+        modifiedDate = new MyTimeFormat(basicFileAttributes.creationTime());
+        size = fileType.equals(FileType.DIR) ? null : basicFileAttributes.size();
     }
 
     @Override

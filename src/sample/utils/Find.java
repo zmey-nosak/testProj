@@ -10,6 +10,8 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Created by Stepan.Koledov on 18.04.2017.
@@ -18,7 +20,8 @@ import java.util.List;
 public class Find {
 
     public static class Finder extends SimpleFileVisitor<Path> {
-
+        private final BlockingQueue<Path> queue
+                = new ArrayBlockingQueue<>(100);
         private final PathMatcher matcher;
         private int numMatches = 0;
         ObservableList<MyFile> filesMatched = FXCollections.observableArrayList();
@@ -60,6 +63,9 @@ public class Find {
         @Override
         public FileVisitResult preVisitDirectory(Path dir,
                                                  BasicFileAttributes attrs) {
+            if (Thread.currentThread().isInterrupted()) {
+                return FileVisitResult.TERMINATE;
+            }
             find(dir);
             return FileVisitResult.CONTINUE;
         }

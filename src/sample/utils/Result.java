@@ -1,6 +1,8 @@
 package sample.utils;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.util.List;
 import java.util.Stack;
 
 /**
@@ -8,15 +10,17 @@ import java.util.Stack;
  */
 public class Result {
     private File dstFile;
+
+
     private File sourceFile;
-    Stack<String> fileNames;
+    List<File> files;
     ResultCode resultCode;
 
-    public Result(File dstFile, File sourceFile, Stack<String> fileNames, ResultCode resultCode) {
+    public Result(File dstFile, File sourceFile, List<File> files, ResultCode resultCode) {
         this.dstFile = dstFile;
         this.sourceFile = sourceFile;
         this.resultCode = resultCode;
-        this.fileNames = fileNames;
+        this.files = files;
     }
 
     public File getSourceFile() {
@@ -25,5 +29,9 @@ public class Result {
 
     public File getDstFile() {
         return dstFile;
+    }
+
+    public void setSourceFile(File sourceFile) {
+        this.sourceFile = sourceFile;
     }
 }

@@ -23,7 +23,6 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static java.io.File.separator;
-import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -213,7 +212,7 @@ public class TabFileManager {
                 if (filesList.size() > 1)
                     alert.setContentText("Are you sure delete file: " + filesList.get(0).getName() + "?");
                 else
-                    alert.setContentText("Are you sure delete files?");
+                    alert.setContentText("Are you sure delete fileNames?");
                 alert.showAndWait().ifPresent(res -> {
                     if (res == ButtonType.OK) asyncDelete(filesList);
                 });
@@ -311,7 +310,7 @@ public class TabFileManager {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            log.info("all files deleted");
+            log.info("all fileNames deleted");
             es1.shutdown();
 
 
@@ -337,7 +336,10 @@ public class TabFileManager {
                     Optional<ButtonType> buttonType = showConfirmationWindowToReplace();
                     if (buttonType.isPresent() && buttonType.get() == ButtonType.OK) {
                         result[0] = f.get();
-
+                        copyContainsFolder(result[0].getSourceFile(), result[0].getDstFile());
+                        if (result[0].files != null) {
+                            asyncCopy(Arrays.asList(result[0].getSourceFile().listFiles()), result[0].getDstFile().toString(), false);
+                        }
                     }
                 }
                 if (flagDelete) {
@@ -349,7 +351,8 @@ public class TabFileManager {
         });
         es1.shutdown();
         if (result[0] != null) {
-            asyncCopy(result[0].fileNames.stream().map(File::new).collect(Collectors.toList()), result[0].getDstFile().toString(), false);
+
+
         }
     }
 
@@ -363,7 +366,6 @@ public class TabFileManager {
     }
 
     private Result copy(File src, File dst, String destinationFolder) {
-        log.info("copy file " + src.getName() + " to " + dst.getPath());
         if (src.isDirectory())
             return copyDir(src, dst, destinationFolder);
         else return new Result(dst, src, null, ResultCode.DONE);
@@ -433,9 +435,9 @@ public class TabFileManager {
         return alert.showAndWait();
     }
 
-    private File recursiveCreateDir(String string) {
+    private File recursiveCreateFolder(String string) {
         if (Files.exists(Paths.get(string)))
-            return recursiveCreateDir(string + "_copy");
+            return recursiveCreateFolder(string + "_copy");
         else {
             File f = new File(string);
             f.mkdir();
@@ -445,21 +447,21 @@ public class TabFileManager {
 
     private Result copyContainsFolder(File srcFileFolder, File dstFileFolder) {
         File nextSrcFilename, nextDstFilename;
-        Stack<String> files = new Stack<>();
-        String[] fileNames = srcFileFolder.list();
+        Stack<File> files = new Stack<>();
+        File[] fileNames = srcFileFolder.listFiles();
         if (fileNames != null) {
             files.addAll(Arrays.asList(fileNames));
             while (!files.isEmpty()) {
-                String filename = files.pop();
-
+                File file = files.pop();
                 nextSrcFilename = new File(srcFileFolder.getAbsolutePath()
-                        + separator + filename);
+                        + separator + file.getName());
                 nextDstFilename = new File(dstFileFolder.getAbsolutePath()
-                        + separator + filename);
+                        + separator + file.getName());
                 if (nextSrcFilename.isDirectory()) {
                     Result res = copyDir(nextSrcFilename, nextDstFilename, dstFileFolder.getAbsolutePath());
                     if (res.resultCode == ResultCode.ALREADY_EXIST) {
-                        res.fileNames = files;
+                        files.push(file);
+                        res.files = files;
                         return res;
                     }
                 } else {
@@ -471,18 +473,28 @@ public class TabFileManager {
     }
 
     private Result copyDir(File srcFileFolder, File dstFileFolder, String destinationFolder) {
-        if (!dstFileFolder.exists())
-            dstFileFolder.mkdir();
-        else {
-            if (destinationFolder.equals(currentDir.getPath())) {
-                dstFileFolder = recursiveCreateDir(dstFileFolder.getPath());
-            } else {
-                return new Result(dstFileFolder, srcFileFolder, null, ResultCode.ALREADY_EXIST);
-            }
+        Result result = checkFolder(dstFileFolder, destinationFolder);
+        if (result.resultCode == ResultCode.DONE) {
+            return copyContainsFolder(srcFileFolder, result.getDstFile());
+        } else {
+            result.setSourceFile(srcFileFolder);
+            result.files=Arrays.asList(srcFileFolder.listFiles());
+            return result;
         }
-        return copyContainsFolder(srcFileFolder, dstFileFolder);
     }
 
+    private Result checkFolder(File dstFileFolder, String destinationFolder) {
+        if (!dstFileFolder.exists()) {
+            dstFileFolder.mkdir();
+            return new Result(dstFileFolder, null, null, ResultCode.DONE);
+        } else {
+            if (destinationFolder.equals(currentDir.getPath())) {
+                return new Result(recursiveCreateFolder(dstFileFolder.getPath()), null, null, ResultCode.DONE);
+            } else {
+                return new Result(dstFileFolder, null, null, ResultCode.ALREADY_EXIST);
+            }
+        }
+    }
 
     private boolean copyFile(final File srcFile, final File dstFile) {
         if (srcFile.exists() && srcFile.isFile() && !dstFile.exists()) {

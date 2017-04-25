@@ -2,22 +2,21 @@ package sample.utils;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import lombok.extern.java.Log;
 import sample.pojo.MyFile;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.logging.Logger;
 
 /**
  * Created by Stepan.Koledov on 18.04.2017.
  */
-@Log
-public class Find {
+class Find {
+
+    private static final Logger log = Logger.getLogger(Find.class.getName());
 
     public static class Finder extends SimpleFileVisitor<Path> {
         private final BlockingQueue<Path> queue

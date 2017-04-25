@@ -10,6 +10,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import lombok.extern.java.Log;
+import sample.controller.Controller;
 import sample.pojo.MyFile;
 
 import java.io.File;
@@ -57,6 +58,7 @@ public class TabFileManager {
 
     private Object sync = new Object();
     private ExecutorService es1;
+    private TabFileManager anotherTab;
     final int THREAD_COUNT = 5;
 
     public Thread getThreadSearching() {
@@ -111,6 +113,10 @@ public class TabFileManager {
         startDaemon();
     }
 
+    public void setAnotherTab(TabFileManager anotherTab) {
+        this.anotherTab = anotherTab;
+    }
+
     private void tableInit() {
         tableFileManager.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -123,27 +129,29 @@ public class TabFileManager {
                     if (!selectedRecord.getBasicFileAttributes().isDirectory()) {
                         //TODO find method to open any file
                     } else {
-                        initData(new File(selectedRecord.getPath().toString()));
+                        initData(new File(selectedRecord.getFile().getPath()));
                     }
                 }
             });
 
-
             row.setOnDragExited(event -> {
-                log.info("dragOverExited:" + row.getItem().getName());
-                row.pseudoClassStateChanged(up, false);
+                if (!row.isEmpty()) {
+                    log.info("dragOverExited:" + row.getItem().getName());
+                    row.pseudoClassStateChanged(up, false);
+                }
                 event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
                 event.consume();
             });
 
             row.setOnDragOver(event -> {
-                Dragboard db = event.getDragboard();
-
-                log.info("dragOverDetected:" + row.getItem().getName());
-                if (db.hasFiles()) {
-                    row.pseudoClassStateChanged(up, true);
-                    event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
-                    event.consume();
+                if (!row.isEmpty()) {
+                    Dragboard db = event.getDragboard();
+                    log.info("dragOverDetected:" + row.getItem().getName());
+                    if (db.hasFiles()) {
+                        row.pseudoClassStateChanged(up, true);
+                        event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                        event.consume();
+                    }
                 }
             });
 
@@ -151,17 +159,26 @@ public class TabFileManager {
                 Dragboard db = event.getDragboard();
                 if (db.hasFiles()) {
                     List<File> fileList = db.getFiles();
-                    long cnt = fileList.stream().filter(f -> f.getPath().equals(row.getItem().getFile().getPath())).count();
-                    if (cnt == 0) {
+                    if (row.isEmpty()) {
                         if (event.getAcceptedTransferMode() == TransferMode.MOVE) {
-                            prepareCopyingOrMoving(fileList, row.getItem().getFile(), true);
+                            prepareCopyingOrMoving(fileList, currentDir, false);
                         } else {
-                            prepareCopyingOrMoving(fileList, row.getItem().getFile(), false);
+                            prepareCopyingOrMoving(fileList, currentDir, true);
                         }
+                    } else {
+                        long cnt = fileList.stream().filter(f -> f.getPath().equals(row.getItem().getFile().getPath())).count();
+                        if (cnt == 0) {
+                            if (event.getAcceptedTransferMode() == TransferMode.MOVE) {
+                                prepareCopyingOrMoving(fileList, row.getItem().getFile(), false);
+                            } else {
+                                prepareCopyingOrMoving(fileList, row.getItem().getFile(), true);
+                            }
+                        }
+                        tableFileManager.getSelectionModel().select(row.getIndex());
                     }
                     event.setDropCompleted(true);
-                    tableFileManager.getSelectionModel().select(row.getIndex());
                     event.consume();
+
                 }
             });
             return row;
@@ -199,6 +216,10 @@ public class TabFileManager {
                     dragBoard.setContent(content);
                 }
         );
+        tableFileManager.setOnDragOver(event -> {
+            event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+            event.consume();
+        });
 
         tableFileManager.sortPolicyProperty().set(t -> {
             Comparator<MyFile> comparator = (r1, r2)
@@ -307,7 +328,7 @@ public class TabFileManager {
                 .ifPresent(inputDirectory -> {
                     File destinationFolder = new File(inputDirectory);
                     if (destinationFolder.exists())
-                        prepareCopyingOrMoving(fileList, destinationFolder, !isCopy);
+                        prepareCopyingOrMoving(fileList, destinationFolder, isCopy);
                 });
     }
 
@@ -395,26 +416,6 @@ public class TabFileManager {
         }
     }
 
-    private void copyContentFolder(File srcFileFolder, File dstFileFolder) {
-        File nextSrcFilename, nextDstFilename;
-        Stack<File> files = new Stack<>();
-        File[] fileNames = srcFileFolder.listFiles();
-        if (fileNames != null) {
-            files.addAll(Arrays.asList(fileNames));
-            while (!files.isEmpty()) {
-                File file = files.pop();
-                nextSrcFilename = new File(srcFileFolder.getAbsolutePath()
-                        + separator + file.getName());
-                nextDstFilename = new File(dstFileFolder.getAbsolutePath()
-                        + separator + file.getName());
-                if (nextSrcFilename.isDirectory()) {
-                    copyDir(nextSrcFilename, nextDstFilename, dstFileFolder);
-                } else {
-                    copyFile(nextSrcFilename, nextDstFilename);
-                }
-            }
-        }
-    }
 
     private void initData(File file) {
         if (file.canRead()) {
@@ -441,6 +442,10 @@ public class TabFileManager {
     }
 
     private void prepareCopyingOrMoving(List<File> src, File destinationFolder, boolean isCopy) {
+        if (!isCopy) {
+            List<File> tmpList = src.stream().filter(file -> file.getParent().equals(destinationFolder.toString())).collect(Collectors.toList());
+            src.removeAll(tmpList);
+        }
         List<File> duplicates = getDuplicates(src, destinationFolder);
         if (!duplicates.isEmpty()) {
             List<File> confirmFiles = getConfirmFiles(duplicates);
@@ -468,8 +473,7 @@ public class TabFileManager {
         return new ArrayList<>();
     }
 
-    private void startCopying(List<File> fileList, File destinationFolder, boolean flagDelete) {
-
+    private void startCopying(List<File> fileList, File destinationFolder, boolean isCopy) {
         this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
         List<Future<File>> tasks = new ArrayList<>();
         lblProcess.setVisible(true);
@@ -479,8 +483,8 @@ public class TabFileManager {
                     Callable<File> callable = () -> {
                         //Thread.sleep(2000); imitation of hard work
                         File dstFile = new File(destinationFolder.getAbsoluteFile() + separator + file.getName());
-                        copy(file, dstFile, destinationFolder);
-                        if (flagDelete) recursiveDelete(file);
+                        copy(file, dstFile, destinationFolder, isCopy);
+                        if (!isCopy) recursiveDelete(file);
                         return null;
                     };
                     tasks.add(es1.submit(callable));
@@ -493,19 +497,40 @@ public class TabFileManager {
         th.start();
     }
 
-    private void copy(File src, File dst, File destinationFolder) {
+    private void copy(File src, File dst, File destinationFolder, boolean isCopy) {
         if (src.isDirectory())
-            copyDir(src, dst, destinationFolder);
+            copyDir(src, dst, destinationFolder, isCopy);
         else
             copyFile(src, dst);
     }
 
-    private void copyDir(File srcFileFolder, File dstFileFolder, File destinationFolder) {
+    private void copyDir(File srcFileFolder, File dstFileFolder, File destinationFolder, boolean isCopy) {
         if (!dstFileFolder.exists())
             dstFileFolder.mkdir();
-        else if (destinationFolder.toPath().equals(currentDir.toPath()))
+        else if ((destinationFolder.toPath().equals(currentDir.toPath()) || anotherTab.currentDir.toPath().equals(destinationFolder.toPath())) && isCopy)
             dstFileFolder = recursiveCreateFolder(dstFileFolder.getPath());
-        copyContentFolder(srcFileFolder, dstFileFolder);
+        copyContentFolder(srcFileFolder, dstFileFolder, isCopy);
+    }
+
+    private void copyContentFolder(File srcFileFolder, File dstFileFolder, boolean isCopy) {
+        File nextSrcFilename, nextDstFilename;
+        Stack<File> files = new Stack<>();
+        File[] fileNames = srcFileFolder.listFiles();
+        if (fileNames != null) {
+            files.addAll(Arrays.asList(fileNames));
+            while (!files.isEmpty()) {
+                File file = files.pop();
+                nextSrcFilename = new File(srcFileFolder.getAbsolutePath()
+                        + separator + file.getName());
+                nextDstFilename = new File(dstFileFolder.getAbsolutePath()
+                        + separator + file.getName());
+                if (nextSrcFilename.isDirectory()) {
+                    copyDir(nextSrcFilename, nextDstFilename, dstFileFolder, isCopy);
+                } else {
+                    copyFile(nextSrcFilename, nextDstFilename);
+                }
+            }
+        }
     }
 
     private void copyFile(final File srcFile, final File dstFile) {

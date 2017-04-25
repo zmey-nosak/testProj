@@ -161,6 +161,9 @@ public class Controller {
                 lblProcess1,
                 processIndicator1,
                 btnStop1);
+        rightTab.setAnotherTab(leftTab);
+        leftTab.setAnotherTab(rightTab);
+
         splitPane.setOnDragOver(event -> {
             Dragboard db = event.getDragboard();
             if (db.hasFiles()) {

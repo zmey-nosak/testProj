@@ -60,6 +60,18 @@ public class Controller {
     @FXML
     private Button btnBack1;
     @FXML
+    private Button btnStop;
+    @FXML
+    private Button btnStop1;
+    @FXML
+    private ProgressIndicator processIndicator;
+    @FXML
+    private ProgressIndicator processIndicator1;
+    @FXML
+    private Label lblProcess;
+    @FXML
+    private Label lblProcess1;
+    @FXML
     private Button btnStopSearching;
     @FXML
     private Button btnStopSearching1;
@@ -67,7 +79,6 @@ public class Controller {
     private TextField txtSearchField;
     @FXML
     private TextField txtSearchField1;
-    private final Object sync = new Object();
     @FXML
     private TableColumn<MyFile, String> nameColumn;
     @FXML
@@ -100,8 +111,56 @@ public class Controller {
         progressIndicator1.setVisible(false);
         btnStopSearching.setVisible(false);
         btnStopSearching1.setVisible(false);
-        leftTab = new TabFileManager(btnAddNewDir, btnDel, btnCopy, btnSearch, txtSearchField, rootDisks, directoryLabel, additionalInfoLbl, tableFileManager, nameColumn, fileTypeColumn, modifiedDateColumn, sizeColumn, btnStopSearching, progressIndicator, btnBack, btnMoveTo);
-        rightTab = new TabFileManager(btnAddNewDir1, btnDel1, btnCopy1, btnSearch1, txtSearchField1, rootDisks1, directoryLabel1, additionalInfoLbl1, tableFileManager1, nameColumn1, fileTypeColumn1, modifiedDateColumn1, sizeColumn1, btnStopSearching1, progressIndicator1, btnBack1, btnMoveTo1);
+        lblProcess.setVisible(false);
+        lblProcess1.setVisible(false);
+        processIndicator.setVisible(false);
+        processIndicator1.setVisible(false);
+        btnStop.setVisible(false);
+        btnStop1.setVisible(false);
+
+        leftTab = new TabFileManager(
+                btnAddNewDir,
+                btnDel,
+                btnCopy,
+                btnSearch,
+                txtSearchField,
+                rootDisks,
+                directoryLabel,
+                additionalInfoLbl,
+                tableFileManager,
+                nameColumn,
+                fileTypeColumn,
+                modifiedDateColumn,
+                sizeColumn,
+                btnStopSearching,
+                progressIndicator,
+                btnBack,
+                btnMoveTo,
+                lblProcess,
+                processIndicator,
+                btnStop);
+
+        rightTab = new TabFileManager(
+                btnAddNewDir1,
+                btnDel1,
+                btnCopy1,
+                btnSearch1,
+                txtSearchField1,
+                rootDisks1,
+                directoryLabel1,
+                additionalInfoLbl1,
+                tableFileManager1,
+                nameColumn1,
+                fileTypeColumn1,
+                modifiedDateColumn1,
+                sizeColumn1,
+                btnStopSearching1,
+                progressIndicator1,
+                btnBack1,
+                btnMoveTo1,
+                lblProcess1,
+                processIndicator1,
+                btnStop1);
         splitPane.setOnDragOver(event -> {
             Dragboard db = event.getDragboard();
             if (db.hasFiles()) {

@@ -1,20 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.lang.String?>
-<?import java.net.*?>
-<?import java.net.URL?>
-<?import javafx.collections.*?>
 <?import javafx.collections.FXCollections?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
 <?import javafx.scene.text.Font?>
-
+<?import java.lang.String?>
+<?import java.net.URL?>
 <AnchorPane id="AnchorPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="698.0" prefWidth="1044.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="sample.controller.Controller">
-  <SplitPane fx:id="splitPane" dividerPositions="0.5" focusTraversable="true" prefHeight="534.0" prefWidth="889.9998779296875" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="1.0" AnchorPane.rightAnchor="-1.0" AnchorPane.topAnchor="0.0">
+  <SplitPane fx:id="splitPane" dividerPositions="0.5" focusTraversable="true" prefHeight="747.0" prefWidth="1044.0" AnchorPane.bottomAnchor="-49.0" AnchorPane.leftAnchor="1.0" AnchorPane.rightAnchor="-1.0" AnchorPane.topAnchor="0.0">
     <AnchorPane cache="true" minHeight="0.0" minWidth="0.0" prefHeight="532.0" prefWidth="505.0">
-      <SplitPane dividerPositions="0.1930835734870317" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="611.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <SplitPane dividerPositions="0.24360699865410498" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="611.0" AnchorPane.bottomAnchor="-1.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="1.0">
         <AnchorPane cache="true" minHeight="0.0" minWidth="0.0" prefHeight="130.0" prefWidth="516.0">
           <ComboBox fx:id="rootDisks" layoutX="14.0" layoutY="14.0" prefWidth="75.0" style="" />
           <Button id="btnCopyTo" fx:id="btnCopy" layoutX="14.0" layoutY="54.0" mnemonicParsing="false" prefWidth="83.99990000000253" text="Copy to.." />
@@ -31,10 +26,13 @@
           <ProgressIndicator fx:id="progressIndicator" layoutX="287.0" layoutY="93.0" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="21.999900000002526" minWidth="-Infinity" prefHeight="22.0" prefWidth="22.0" progress="-1.0" />
           <Button fx:id="btnStopSearching" cancelButton="false" defaultButton="false" disable="false" focusTraversable="true" layoutX="322.0" layoutY="92.0" mnemonicParsing="false" prefWidth="57.0" text="Stop" />
           <Button fx:id="btnBack" layoutX="379.0" layoutY="92.0" mnemonicParsing="false" text="Back" />
+          <ProgressIndicator fx:id="processIndicator" layoutX="228.0" layoutY="134.0" minHeight="22.0" minWidth="22.0" prefHeight="22.0" prefWidth="22.0" progress="-1.0" />
+          <Label fx:id="lblProcess" layoutX="163.0" layoutY="137.0" text="process..." />
+          <Button fx:id="btnStop" layoutX="263.0" layoutY="135.0" mnemonicParsing="false" prefWidth="54.0" text="Stop" />
         </AnchorPane>
         <AnchorPane cache="true" disable="false" minHeight="0.0" minWidth="0.0" prefHeight="329.0" prefWidth="829.0">
           <children>
-            <SplitPane dividerPositions="0.9171171171171171" focusTraversable="true" orientation="VERTICAL" prefHeight="405.0" prefWidth="516.0" AnchorPane.bottomAnchor="-1.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="1.0">
+            <SplitPane dividerPositions="0.9326241134751773" focusTraversable="true" orientation="VERTICAL" prefHeight="530.0" prefWidth="516.0" AnchorPane.bottomAnchor="-1.0" AnchorPane.leftAnchor="-1.0" AnchorPane.rightAnchor="1.0" AnchorPane.topAnchor="-6.0">
               <items>
                 <AnchorPane cache="true" minHeight="0.0" minWidth="0.0" prefHeight="365.0" prefWidth="503.0">
                   <children>
@@ -65,7 +63,7 @@
       </SplitPane>
     </AnchorPane>
     <AnchorPane cache="true" minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
-      <SplitPane dividerPositions="0.1930835734870317" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="465.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <SplitPane dividerPositions="0.24629878869448182" focusTraversable="true" orientation="VERTICAL" prefHeight="532.0" prefWidth="465.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <items>
           <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="261.9999000000025" prefWidth="516.0">
             <Button id="btnAddNewDir" fx:id="btnAddNewDir1" layoutX="254.0" layoutY="54.0" mnemonicParsing="false" prefWidth="140.9998779296875" text="Create directory" />
@@ -87,9 +85,12 @@
             </ComboBox>
             <ProgressIndicator fx:id="progressIndicator1" layoutX="289.0" layoutY="93.0" minHeight="22.0" prefHeight="22.0" prefWidth="22.0" progress="-1.0" />
             <Button fx:id="btnBack1" layoutX="372.0" layoutY="92.0" mnemonicParsing="false" prefWidth="54.0" text="Back" />
+            <ProgressIndicator fx:id="processIndicator1" layoutX="212.0" layoutY="139.0" minHeight="22.0" minWidth="22.0" prefHeight="22.0" prefWidth="22.0" progress="-1.0" />
+            <Label fx:id="lblProcess1" layoutX="147.0" layoutY="142.0" text="process..." />
+            <Button fx:id="btnStop1" layoutX="247.0" layoutY="140.0" mnemonicParsing="false" prefWidth="54.0" text="Stop" />
           </AnchorPane>
           <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
-            <SplitPane dividerPositions="0.9207207207207208" focusTraversable="true" orientation="VERTICAL" prefHeight="404.0" prefWidth="516.0" AnchorPane.bottomAnchor="1.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="-1.0">
+            <SplitPane dividerPositions="0.9369369369369369" focusTraversable="true" orientation="VERTICAL" prefHeight="404.0" prefWidth="516.0" AnchorPane.bottomAnchor="1.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="-1.0">
               <AnchorPane cache="true" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
                 <TableView fx:id="tableFileManager1" prefHeight="364.0" prefWidth="514.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                   <columns>

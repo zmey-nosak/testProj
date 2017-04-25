@@ -51,13 +51,40 @@ public class TabFileManager {
     private TableColumn<MyFile, Long> sizeColumn;
     private Thread threadSearching;
     private ProgressIndicator progressIndicator;
+    private Label lblProcess;
+    private ProgressIndicator processIndicator;
+    private Button btnStop;
+
     private Object sync = new Object();
+    private ExecutorService es1;
+    final int THREAD_COUNT = 5;
 
     public Thread getThreadSearching() {
         return threadSearching;
     }
 
-    public TabFileManager(Button btnAddNewDir, Button btnDel, Button btnCopy, Button btnSearch, TextField txtSearchField, ComboBox<File> rootDisks, Label directoryLabel, Label additionalInfoLbl, TableView<MyFile> tableFileManager, TableColumn<MyFile, String> nameColumn, TableColumn<MyFile, String> fileTypeColumn, TableColumn<MyFile, FileTime> modifiedDateColumn, TableColumn<MyFile, Long> sizeColumn, Button btnStopSearching, ProgressIndicator progressIndicator, Button btnBack, Button btnMoveTo) {
+    public TabFileManager(
+            Button btnAddNewDir,
+            Button btnDel,
+            Button btnCopy,
+            Button btnSearch,
+            TextField txtSearchField,
+            ComboBox<File> rootDisks,
+            Label directoryLabel,
+            Label additionalInfoLbl,
+            TableView<MyFile> tableFileManager,
+            TableColumn<MyFile, String> nameColumn,
+            TableColumn<MyFile, String> fileTypeColumn,
+            TableColumn<MyFile, FileTime> modifiedDateColumn,
+            TableColumn<MyFile, Long> sizeColumn,
+            Button btnStopSearching,
+            ProgressIndicator progressIndicator,
+            Button btnBack,
+            Button btnMoveTo,
+            Label lblProcess,
+            ProgressIndicator processIndicator,
+            Button btnStop
+    ) {
         this.btnAddNewDir = btnAddNewDir;
         this.btnDel = btnDel;
         this.btnCopyTo = btnCopy;
@@ -75,6 +102,9 @@ public class TabFileManager {
         this.progressIndicator = progressIndicator;
         this.btnBack = btnBack;
         this.btnMoveTo = btnMoveTo;
+        this.btnStop = btnStop;
+        this.processIndicator = processIndicator;
+        this.lblProcess = lblProcess;
         tableInit();
         cmbBoxInit();
         buttonsInit();
@@ -98,6 +128,7 @@ public class TabFileManager {
                 }
             });
 
+
             row.setOnDragExited(event -> {
                 log.info("dragOverExited:" + row.getItem().getName());
                 row.pseudoClassStateChanged(up, false);
@@ -107,6 +138,7 @@ public class TabFileManager {
 
             row.setOnDragOver(event -> {
                 Dragboard db = event.getDragboard();
+
                 log.info("dragOverDetected:" + row.getItem().getName());
                 if (db.hasFiles()) {
                     row.pseudoClassStateChanged(up, true);
@@ -161,6 +193,7 @@ public class TabFileManager {
                             .getSelectionModel()
                             .getSelectedItems()
                             .stream()
+                            .filter(f -> !f.isHead())
                             .map(MyFile::getFile)
                             .collect(Collectors.toList()));
                     dragBoard.setContent(content);
@@ -248,6 +281,13 @@ public class TabFileManager {
                     initData(currentDir);
                 }
             }
+        });
+
+        btnStop.setOnAction(event -> {
+            es1.shutdownNow();
+            lblProcess.setVisible(false);
+            processIndicator.setVisible(false);
+            btnStop.setVisible(false);
         });
 
     }
@@ -429,10 +469,15 @@ public class TabFileManager {
     }
 
     private void startCopying(List<File> fileList, File destinationFolder, boolean flagDelete) {
-        ExecutorService es1 = Executors.newFixedThreadPool(5);
+
+        this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
         List<Future<File>> tasks = new ArrayList<>();
+        lblProcess.setVisible(true);
+        processIndicator.setVisible(true);
+        btnStop.setVisible(true);
         fileList.forEach(file -> {
                     Callable<File> callable = () -> {
+                        //Thread.sleep(2000); imitation of hard work
                         File dstFile = new File(destinationFolder.getAbsoluteFile() + separator + file.getName());
                         copy(file, dstFile, destinationFolder);
                         if (flagDelete) recursiveDelete(file);
@@ -442,7 +487,10 @@ public class TabFileManager {
                 }
         );
         es1.shutdown();
-
+        Thread th = new Thread(() -> {
+            process(tasks);
+        });
+        th.start();
     }
 
     private void copy(File src, File dst, File destinationFolder) {
@@ -469,31 +517,26 @@ public class TabFileManager {
     }
 
     private void startDeleting(List<File> filesList) {
+        btnStop.setVisible(true);
+        lblProcess.setVisible(true);
+        processIndicator.setVisible(true);
         synchronized (sync) {
-            ExecutorService es1 = Executors.newFixedThreadPool(5);
-            List<Callable<File>> tasks = new LinkedList<>();
+
+            ExecutorService es1 = Executors.newFixedThreadPool(THREAD_COUNT);
+            List<Future<File>> tasks = new ArrayList<>();
             filesList.forEach(file -> {
-                        tasks.add(() -> {
-                            recursiveDelete(file);
-                            return file;
-                        });
-                    }
-            );
-            try {
-                es1.invokeAll(tasks).stream().map(f -> {
-                    try {
-                        log.info(String.format("%s process of deleting", f.get().getName()));
-                        return f.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                    return null;
-                }).forEach(r -> log.info(String.format("%s was deleted", r.getName())));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            log.info("all fileNames deleted");
+                Callable<File> callable = () -> {
+                    //Thread.sleep(2000); imitation of hard work
+                    recursiveDelete(file);
+                    return file;
+                };
+                tasks.add(es1.submit(callable));
+            });
             es1.shutdown();
+            Thread th = new Thread(() -> {
+                process(tasks);
+            });
+            th.start();
         }
     }
 
@@ -512,5 +555,12 @@ public class TabFileManager {
         if (!file.delete()) {
             log.info(String.format("Something wrong with deleting file %s", file.toPath()));
         }
+    }
+
+    private void process(List<Future<File>> tasks) {
+        while (tasks.stream().filter(task -> !task.isDone()).count() > 0) ;
+        btnStop.setVisible(false);
+        lblProcess.setVisible(false);
+        processIndicator.setVisible(false);
     }
 }

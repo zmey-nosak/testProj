@@ -100,8 +100,8 @@ public class Controller {
         progressIndicator1.setVisible(false);
         btnStopSearching.setVisible(false);
         btnStopSearching1.setVisible(false);
-        leftTab = new TabFileManager(btnAddNewDir, btnDel, btnCopy, btnSearch, txtSearchField, rootDisks, directoryLabel, additionalInfoLbl, tableFileManager, nameColumn, fileTypeColumn, modifiedDateColumn, sizeColumn, btnStopSearching, progressIndicator, btnBack,btnMoveTo);
-        rightTab = new TabFileManager(btnAddNewDir1, btnDel1, btnCopy1, btnSearch1, txtSearchField1, rootDisks1, directoryLabel1, additionalInfoLbl1, tableFileManager1, nameColumn1, fileTypeColumn1, modifiedDateColumn1, sizeColumn1, btnStopSearching1, progressIndicator1, btnBack1,btnMoveTo1);
+        leftTab = new TabFileManager(btnAddNewDir, btnDel, btnCopy, btnSearch, txtSearchField, rootDisks, directoryLabel, additionalInfoLbl, tableFileManager, nameColumn, fileTypeColumn, modifiedDateColumn, sizeColumn, btnStopSearching, progressIndicator, btnBack, btnMoveTo);
+        rightTab = new TabFileManager(btnAddNewDir1, btnDel1, btnCopy1, btnSearch1, txtSearchField1, rootDisks1, directoryLabel1, additionalInfoLbl1, tableFileManager1, nameColumn1, fileTypeColumn1, modifiedDateColumn1, sizeColumn1, btnStopSearching1, progressIndicator1, btnBack1, btnMoveTo1);
         splitPane.setOnDragOver(event -> {
             Dragboard db = event.getDragboard();
             if (db.hasFiles()) {
@@ -120,7 +120,7 @@ public class Controller {
     }
 
     private void closeThreads(Thread th) {
-        if (th!=null && th.isAlive()) {
+        if (th != null && th.isAlive()) {
             th.interrupt();
         }
     }

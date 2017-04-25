@@ -49,16 +49,13 @@ public class TabFileManager {
     private TableColumn<MyFile, String> fileTypeColumn;
     private TableColumn<MyFile, FileTime> modifiedDateColumn;
     private TableColumn<MyFile, Long> sizeColumn;
+    private Thread threadSearching;
+    private ProgressIndicator progressIndicator;
+    private Object sync = new Object();
 
     public Thread getThreadSearching() {
         return threadSearching;
     }
-
-    private Thread threadSearching;
-    private ProgressIndicator progressIndicator;
-
-
-    Object sync = new Object();
 
     public TabFileManager(Button btnAddNewDir, Button btnDel, Button btnCopy, Button btnSearch, TextField txtSearchField, ComboBox<File> rootDisks, Label directoryLabel, Label additionalInfoLbl, TableView<MyFile> tableFileManager, TableColumn<MyFile, String> nameColumn, TableColumn<MyFile, String> fileTypeColumn, TableColumn<MyFile, FileTime> modifiedDateColumn, TableColumn<MyFile, Long> sizeColumn, Button btnStopSearching, ProgressIndicator progressIndicator, Button btnBack, Button btnMoveTo) {
         this.btnAddNewDir = btnAddNewDir;
@@ -125,9 +122,9 @@ public class TabFileManager {
                     long cnt = fileList.stream().filter(f -> f.getPath().equals(row.getItem().getFile().getPath())).count();
                     if (cnt == 0) {
                         if (event.getAcceptedTransferMode() == TransferMode.MOVE) {
-                            asyncCopy(fileList, row.getItem().getPath().toString(), true);
+                            prepareCopyingOrMoving(fileList, row.getItem().getFile(), true);
                         } else {
-                            asyncCopy(fileList, row.getItem().getPath().toString(), false);
+                            prepareCopyingOrMoving(fileList, row.getItem().getFile(), false);
                         }
                     }
                     event.setDropCompleted(true);
@@ -214,14 +211,14 @@ public class TabFileManager {
                 else
                     alert.setContentText("Are you sure delete fileNames?");
                 alert.showAndWait().ifPresent(res -> {
-                    if (res == ButtonType.OK) asyncDelete(filesList);
+                    if (res == ButtonType.OK) startDeleting(filesList);
                 });
             }
         });
 
-        btnCopyTo.setOnAction(action -> processCopyOrMoveByButton(true));
+        btnCopyTo.setOnAction(action -> copyOrMoveByButton(true));
 
-        btnMoveTo.setOnAction(action -> processCopyOrMoveByButton(false));
+        btnMoveTo.setOnAction(action -> copyOrMoveByButton(false));
 
         btnSearch.setOnAction(action -> {
             if (!txtSearchField.getText().isEmpty()) {
@@ -252,9 +249,10 @@ public class TabFileManager {
                 }
             }
         });
+
     }
 
-    private void processCopyOrMoveByButton(boolean isCopy) {
+    private void copyOrMoveByButton(boolean isCopy) {
         List<File> fileList = tableFileManager
                 .getSelectionModel()
                 .getSelectedItems()
@@ -267,11 +265,11 @@ public class TabFileManager {
         dialog.setContentText(String.format("%s file to directory:", isCopy ? "Copy" : "Move"));
         dialog.showAndWait()
                 .ifPresent(inputDirectory -> {
-                    if (Files.exists(Paths.get(inputDirectory)))
-                        asyncCopy(fileList, inputDirectory, !isCopy);
+                    File destinationFolder = new File(inputDirectory);
+                    if (destinationFolder.exists())
+                        prepareCopyingOrMoving(fileList, destinationFolder, !isCopy);
                 });
     }
-
 
     private void searchingProcess() {
         synchronized (sync) {
@@ -286,76 +284,6 @@ public class TabFileManager {
         }
     }
 
-    private void asyncDelete(List<File> filesList) {
-        synchronized (sync) {
-            ExecutorService es1 = Executors.newFixedThreadPool(5);
-            List<Callable<File>> tasks = new LinkedList<>();
-            filesList.forEach(file -> {
-                        tasks.add(() -> {
-                            recursiveDelete(file);
-                            return file;
-                        });
-                    }
-            );
-            try {
-                es1.invokeAll(tasks).stream().map(f -> {
-                    try {
-                        log.info(String.format("%s process of deleting", f.get().getName()));
-                        return f.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                    return null;
-                }).forEach(r -> log.info(String.format("%s was deleted", r.getName())));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            log.info("all fileNames deleted");
-            es1.shutdown();
-
-
-        }
-    }
-
-
-    private void asyncCopy(List<File> fileList, String inputDirectory, boolean flagDelete) {
-        ExecutorService es1 = Executors.newFixedThreadPool(5);
-        final Result[] result = {null};
-        List<Future<Result>> tasks = new ArrayList<>();
-        fileList.forEach(file -> {
-                    Callable<Result> callable = () -> {
-                        File dstFile = new File(inputDirectory + separator + file.getName());
-                        return copy(file, dstFile, inputDirectory);
-                    };
-                    tasks.add(es1.submit(callable));
-                }
-        );
-        tasks.forEach(f -> {
-            try {
-                if (f.get().resultCode == ResultCode.ALREADY_EXIST) {
-                    Optional<ButtonType> buttonType = showConfirmationWindowToReplace();
-                    if (buttonType.isPresent() && buttonType.get() == ButtonType.OK) {
-                        result[0] = f.get();
-                        copyContainsFolder(result[0].getSourceFile(), result[0].getDstFile());
-                        if (result[0].files != null) {
-                            asyncCopy(Arrays.asList(result[0].getSourceFile().listFiles()), result[0].getDstFile().toString(), false);
-                        }
-                    }
-                }
-                if (flagDelete) {
-                    recursiveDelete(f.get().getSourceFile());
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        });
-        es1.shutdown();
-        if (result[0] != null) {
-
-
-        }
-    }
-
     private MyFile createDirectory(String dir) {
         File f = new File(dir);
         if (f.mkdir()) {
@@ -363,30 +291,6 @@ public class TabFileManager {
             return new MyFile(f);
         }
         return null;
-    }
-
-    private Result copy(File src, File dst, String destinationFolder) {
-        if (src.isDirectory())
-            return copyDir(src, dst, destinationFolder);
-        else return new Result(dst, src, null, ResultCode.DONE);
-        //copyFile(src, dst);
-    }
-
-    private void recursiveDelete(File file) {
-        log.info("deleting file " + file.getName() + " ...");
-        if (!file.exists())
-            return;
-        if (file.isDirectory()) {
-            File[] files = file.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    recursiveDelete(f);
-                }
-            }
-        }
-        if (!file.delete()) {
-            log.info(String.format("Something wrong with deleting file %s", file.toPath()));
-        }
     }
 
     private void startDaemon() {
@@ -427,11 +331,17 @@ public class TabFileManager {
         th1.start();
     }
 
-    private Optional<ButtonType> showConfirmationWindowToReplace() {
+    private Optional<ButtonType> showConfirmationWindowToReplace(File file) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Confirmation Dialog");
         alert.setHeaderText("");
-        alert.setContentText("File with the same name already exist. Do you want replace?");
+        String message = "";
+        if (file.isDirectory()) {
+            message = "The destination already contain folder named %s. Do you want to merge this folder?";
+        } else {
+            message = "The destination already contain file named %s. Do you want to replace this file?";
+        }
+        alert.setContentText(String.format(message, file.getName()));
         return alert.showAndWait();
     }
 
@@ -445,7 +355,7 @@ public class TabFileManager {
         }
     }
 
-    private Result copyContainsFolder(File srcFileFolder, File dstFileFolder) {
+    private void copyContentFolder(File srcFileFolder, File dstFileFolder) {
         File nextSrcFilename, nextDstFilename;
         Stack<File> files = new Stack<>();
         File[] fileNames = srcFileFolder.listFiles();
@@ -458,69 +368,12 @@ public class TabFileManager {
                 nextDstFilename = new File(dstFileFolder.getAbsolutePath()
                         + separator + file.getName());
                 if (nextSrcFilename.isDirectory()) {
-                    Result res = copyDir(nextSrcFilename, nextDstFilename, dstFileFolder.getAbsolutePath());
-                    if (res.resultCode == ResultCode.ALREADY_EXIST) {
-                        files.push(file);
-                        res.files = files;
-                        return res;
-                    }
+                    copyDir(nextSrcFilename, nextDstFilename, dstFileFolder);
                 } else {
-                    //  return copyFile(nextSrcFilename, nextDstFilename);
+                    copyFile(nextSrcFilename, nextDstFilename);
                 }
             }
         }
-        return new Result(dstFileFolder, srcFileFolder, null, ResultCode.DONE);
-    }
-
-    private Result copyDir(File srcFileFolder, File dstFileFolder, String destinationFolder) {
-        Result result = checkFolder(dstFileFolder, destinationFolder);
-        if (result.resultCode == ResultCode.DONE) {
-            return copyContainsFolder(srcFileFolder, result.getDstFile());
-        } else {
-            result.setSourceFile(srcFileFolder);
-            result.files=Arrays.asList(srcFileFolder.listFiles());
-            return result;
-        }
-    }
-
-    private Result checkFolder(File dstFileFolder, String destinationFolder) {
-        if (!dstFileFolder.exists()) {
-            dstFileFolder.mkdir();
-            return new Result(dstFileFolder, null, null, ResultCode.DONE);
-        } else {
-            if (destinationFolder.equals(currentDir.getPath())) {
-                return new Result(recursiveCreateFolder(dstFileFolder.getPath()), null, null, ResultCode.DONE);
-            } else {
-                return new Result(dstFileFolder, null, null, ResultCode.ALREADY_EXIST);
-            }
-        }
-    }
-
-    private boolean copyFile(final File srcFile, final File dstFile) {
-        if (srcFile.exists() && srcFile.isFile() && !dstFile.exists()) {
-            try {
-                Files.copy(srcFile.toPath(), dstFile.toPath());
-                return true;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else if (dstFile.exists()) {
-            return copyWithReplacement(srcFile, dstFile);
-        }
-        return false;
-    }
-
-    private boolean copyWithReplacement(File srcFile, File dstFile) {
-        Optional<ButtonType> buttonType = showConfirmationWindowToReplace();
-        if (buttonType.isPresent() && buttonType.get() == ButtonType.OK) {
-            try {
-                Files.copy(srcFile.toPath(), dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                return true;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return false;
     }
 
     private void initData(File file) {
@@ -547,4 +400,117 @@ public class TabFileManager {
         }
     }
 
+    private void prepareCopyingOrMoving(List<File> src, File destinationFolder, boolean isCopy) {
+        List<File> duplicates = getDuplicates(src, destinationFolder);
+        if (!duplicates.isEmpty()) {
+            List<File> confirmFiles = getConfirmFiles(duplicates);
+            src.removeAll(duplicates);
+            src.addAll(confirmFiles);
+        }
+        startCopying(src, destinationFolder, isCopy);
+    }
+
+    private List<File> getConfirmFiles(List<File> duplicates) {
+        return duplicates.stream().filter(file -> {
+            Optional<ButtonType> buttonType = showConfirmationWindowToReplace(file);
+            return buttonType.isPresent() || buttonType.get() == ButtonType.OK;
+        }).collect(Collectors.toList());
+
+
+    }
+
+    private List<File> getDuplicates(List<File> files, File destinationFolder) {
+        File[] content = destinationFolder.listFiles();
+        if (content != null) {
+            List<String> contentList = Arrays.stream(content).map(File::getName).collect(Collectors.toList());
+            return files.stream().filter(file -> contentList.contains(file.getName())).collect(Collectors.toList());
+        }
+        return new ArrayList<>();
+    }
+
+    private void startCopying(List<File> fileList, File destinationFolder, boolean flagDelete) {
+        ExecutorService es1 = Executors.newFixedThreadPool(5);
+        List<Future<File>> tasks = new ArrayList<>();
+        fileList.forEach(file -> {
+                    Callable<File> callable = () -> {
+                        File dstFile = new File(destinationFolder.getAbsoluteFile() + separator + file.getName());
+                        copy(file, dstFile, destinationFolder);
+                        if (flagDelete) recursiveDelete(file);
+                        return null;
+                    };
+                    tasks.add(es1.submit(callable));
+                }
+        );
+        es1.shutdown();
+
+    }
+
+    private void copy(File src, File dst, File destinationFolder) {
+        if (src.isDirectory())
+            copyDir(src, dst, destinationFolder);
+        else
+            copyFile(src, dst);
+    }
+
+    private void copyDir(File srcFileFolder, File dstFileFolder, File destinationFolder) {
+        if (!dstFileFolder.exists())
+            dstFileFolder.mkdir();
+        else if (destinationFolder.toPath().equals(currentDir.toPath()))
+            dstFileFolder = recursiveCreateFolder(dstFileFolder.getPath());
+        copyContentFolder(srcFileFolder, dstFileFolder);
+    }
+
+    private void copyFile(final File srcFile, final File dstFile) {
+        try {
+            Files.copy(srcFile.toPath(), dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startDeleting(List<File> filesList) {
+        synchronized (sync) {
+            ExecutorService es1 = Executors.newFixedThreadPool(5);
+            List<Callable<File>> tasks = new LinkedList<>();
+            filesList.forEach(file -> {
+                        tasks.add(() -> {
+                            recursiveDelete(file);
+                            return file;
+                        });
+                    }
+            );
+            try {
+                es1.invokeAll(tasks).stream().map(f -> {
+                    try {
+                        log.info(String.format("%s process of deleting", f.get().getName()));
+                        return f.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }).forEach(r -> log.info(String.format("%s was deleted", r.getName())));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            log.info("all fileNames deleted");
+            es1.shutdown();
+        }
+    }
+
+    private void recursiveDelete(File file) {
+        log.info("deleting file " + file.getName() + " ...");
+        if (!file.exists())
+            return;
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    recursiveDelete(f);
+                }
+            }
+        }
+        if (!file.delete()) {
+            log.info(String.format("Something wrong with deleting file %s", file.toPath()));
+        }
+    }
 }

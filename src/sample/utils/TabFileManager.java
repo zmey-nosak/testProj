@@ -551,7 +551,7 @@ public class TabFileManager {
             List<Future<File>> tasks = new ArrayList<>();
             filesList.forEach(file -> {
                 Callable<File> callable = () -> {
-                    Thread.sleep(2000); //imitation of hard work
+                   // Thread.sleep(2000); //imitation of hard work
                     recursiveDelete(file);
                     return file;
                 };

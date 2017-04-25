@@ -474,24 +474,24 @@ public class TabFileManager {
     }
 
     private void startCopying(List<File> fileList, File destinationFolder, boolean isCopy) {
-        this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
-        List<Future<File>> tasks = new ArrayList<>();
-        lblProcess.setVisible(true);
-        processIndicator.setVisible(true);
-        btnStop.setVisible(true);
-        fileList.forEach(file -> {
-                    Callable<File> callable = () -> {
-                        //Thread.sleep(2000); imitation of hard work
-                        File dstFile = new File(destinationFolder.getAbsoluteFile() + separator + file.getName());
-                        copy(file, dstFile, destinationFolder, isCopy);
-                        if (!isCopy) recursiveDelete(file);
-                        return null;
-                    };
-                    tasks.add(es1.submit(callable));
-                }
-        );
-        es1.shutdown();
         Thread th = new Thread(() -> {
+            this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
+            List<Future<File>> tasks = new ArrayList<>();
+            lblProcess.setVisible(true);
+            processIndicator.setVisible(true);
+            btnStop.setVisible(true);
+            fileList.forEach(file -> {
+                        Callable<File> callable = () -> {
+                            //Thread.sleep(2000); imitation of hard work
+                            File dstFile = new File(destinationFolder.getAbsoluteFile() + separator + file.getName());
+                            copy(file, dstFile, destinationFolder, isCopy);
+                            if (!isCopy) recursiveDelete(file);
+                            return null;
+                        };
+                        tasks.add(es1.submit(callable));
+                    }
+            );
+            es1.shutdown();
             process(tasks);
         });
         th.start();
@@ -547,17 +547,17 @@ public class TabFileManager {
         processIndicator.setVisible(true);
         Thread th = new Thread(() -> {
             synchronized (sync) {
-            this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
-            List<Future<File>> tasks = new ArrayList<>();
-            filesList.forEach(file -> {
-                Callable<File> callable = () -> {
-                   // Thread.sleep(2000); //imitation of hard work
-                    recursiveDelete(file);
-                    return file;
-                };
-                tasks.add(es1.submit(callable));
-            });
-            es1.shutdown();
+                this.es1 = Executors.newFixedThreadPool(THREAD_COUNT);
+                List<Future<File>> tasks = new ArrayList<>();
+                filesList.forEach(file -> {
+                    Callable<File> callable = () -> {
+                        // Thread.sleep(2000); //imitation of hard work
+                        recursiveDelete(file);
+                        return file;
+                    };
+                    tasks.add(es1.submit(callable));
+                });
+                es1.shutdown();
                 process(tasks);
             }
         });
@@ -581,10 +581,11 @@ public class TabFileManager {
         }
     }
 
-    private void process(List<Future<File>> tasks) {
+    private boolean process(List<Future<File>> tasks) {
         while (tasks.stream().filter(task -> !task.isDone()).count() > 0) ;
         btnStop.setVisible(false);
         lblProcess.setVisible(false);
         processIndicator.setVisible(false);
+        return true;
     }
 }

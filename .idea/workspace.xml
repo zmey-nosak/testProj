@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4b7c4649-2f71-4d76-8e73-f41b18355ccf" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/testProj/sample/controller/Controller.class" afterPath="$PROJECT_DIR$/out/production/testProj/sample/controller/Controller.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/testProj/sample/pojo/MyFile.class" afterPath="$PROJECT_DIR$/out/production/testProj/sample/pojo/MyFile.class" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/sample/utils/TabFileManager.java" afterPath="$PROJECT_DIR$/src/sample/utils/TabFileManager.java" />
     </list>
@@ -80,26 +78,24 @@
       <file leaf-file-name="TabFileManager.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/sample/utils/TabFileManager.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="257">
-              <caret line="553" column="21" selection-start-line="553" selection-start-column="21" selection-end-line="553" selection-end-column="21" />
+            <state relative-caret-position="-306">
+              <caret line="487" column="43" selection-start-line="487" selection-start-column="43" selection-end-line="487" selection-end-column="43" />
               <folding>
                 <element signature="imports" expanded="true" />
                 <element signature="e#3962#3963#0" expanded="true" />
                 <element signature="e#4006#4007#0" expanded="true" />
                 <element signature="method#cmbBoxInit#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#createDirectory#0;class#TabFileManager#0" expanded="false" />
+                <element signature="method#startDaemon#0;class#TabFileManager#0" expanded="false" />
+                <element signature="method#showConfirmationWindowToReplace#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#recursiveCreateFolder#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#initData#0;class#TabFileManager#0" expanded="false" />
-                <element signature="method#prepareCopyingOrMoving#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#getConfirmFiles#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#getDuplicates#0;class#TabFileManager#0" expanded="false" />
-                <element signature="method#startCopying#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#copy#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#copyDir#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#copyContentFolder#0;class#TabFileManager#0" expanded="false" />
                 <element signature="method#copyFile#0;class#TabFileManager#0" expanded="false" />
-                <element signature="method#recursiveDelete#0;class#TabFileManager#0" expanded="false" />
-                <element signature="method#process#0;class#TabFileManager#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -899,7 +895,7 @@
       <workItem from="1493051022111" duration="2883000" />
       <workItem from="1493054179458" duration="10880000" />
       <workItem from="1493097694177" duration="23300000" />
-      <workItem from="1493134852477" duration="11699000" />
+      <workItem from="1493134852477" duration="13373000" />
     </task>
     <task id="LOCAL-00001" summary="add deleting">
       <created>1492374285273</created>
@@ -929,11 +925,18 @@
       <option name="project" value="LOCAL" />
       <updated>1493156373949</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fix async delete">
+      <created>1493156397640</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1493156397640</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="130179000" />
+    <option name="totallyTimeSpent" value="131853000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1920" height="1040" extended-state="0" />
@@ -1176,26 +1179,24 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/sample/utils/TabFileManager.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="257">
-          <caret line="553" column="21" selection-start-line="553" selection-start-column="21" selection-end-line="553" selection-end-column="21" />
+        <state relative-caret-position="-306">
+          <caret line="487" column="43" selection-start-line="487" selection-start-column="43" selection-end-line="487" selection-end-column="43" />
           <folding>
             <element signature="imports" expanded="true" />
             <element signature="e#3962#3963#0" expanded="true" />
             <element signature="e#4006#4007#0" expanded="true" />
             <element signature="method#cmbBoxInit#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#createDirectory#0;class#TabFileManager#0" expanded="false" />
+            <element signature="method#startDaemon#0;class#TabFileManager#0" expanded="false" />
+            <element signature="method#showConfirmationWindowToReplace#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#recursiveCreateFolder#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#initData#0;class#TabFileManager#0" expanded="false" />
-            <element signature="method#prepareCopyingOrMoving#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#getConfirmFiles#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#getDuplicates#0;class#TabFileManager#0" expanded="false" />
-            <element signature="method#startCopying#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#copy#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#copyDir#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#copyContentFolder#0;class#TabFileManager#0" expanded="false" />
             <element signature="method#copyFile#0;class#TabFileManager#0" expanded="false" />
-            <element signature="method#recursiveDelete#0;class#TabFileManager#0" expanded="false" />
-            <element signature="method#process#0;class#TabFileManager#0" expanded="false" />
           </folding>
         </state>
       </provider>
